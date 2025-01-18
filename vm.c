@@ -34,8 +34,18 @@ Value pop()
 
 static InterpretResult run()
 {
-#define READ_BYTE() (*vm.ip++)
+#define READ_BYTE() (*vm.ip++) // Separate dereference and increment.
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
+
+// For OP_CONSTANT_LONG, read 3 bytes separately
+#define READ_LONG_CONSTANT()                                                \
+    ({                                                                      \
+        uint8_t byte1 = READ_BYTE();                                        \
+        uint8_t byte2 = READ_BYTE();                                        \
+        uint8_t byte3 = READ_BYTE();                                        \
+        vm.chunk->constants.values[(byte1 | (byte2 << 8) | (byte3 << 16))]; \
+    })
+
 #define BINARY_OP(op)     \
     do                    \
     {                     \
@@ -67,6 +77,12 @@ static InterpretResult run()
             push(constant);
             break;
         }
+        case OP_CONSTANT_LONG:
+        {
+            Value constant = READ_LONG_CONSTANT();
+            push(constant);
+            break;
+        }
         case OP_ADD:
             BINARY_OP(+);
             break;
@@ -93,6 +109,7 @@ static InterpretResult run()
 
 #undef READ_BYTE
 #undef READ_CONSTANT
+#undef READ_LONG_CONSTANT
 #undef BINARY_OP
 }
 
