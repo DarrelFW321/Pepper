@@ -22,9 +22,10 @@ void freeChunk(Chunk *chunk)
     initChunk(chunk);
 }
 
-void writeConstant(Chunk *chunk, Value value, int line)
+uint32_t writeConstant(Chunk *chunk, Value value, int line)
 {
-    int index = addConstant(chunk, value);
+    int index = addConstant(chunk, value); // `addConstant` returns an int.
+
     if (index < 256)
     {
         writeChunk(chunk, OP_CONSTANT, line);
@@ -37,6 +38,8 @@ void writeConstant(Chunk *chunk, Value value, int line)
         writeChunk(chunk, (uint8_t)((index >> 8) & 0xff), line);
         writeChunk(chunk, (uint8_t)((index >> 16) & 0xff), line);
     }
+
+    return (uint32_t)index; // Ensure the return type is `uint16_t`.
 }
 
 void writeChunk(Chunk *chunk, uint8_t byte, int line)

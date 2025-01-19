@@ -35,6 +35,17 @@ static int constantInstruction(const char *name, Chunk *chunk,
     return offset + 2;
 }
 
+static int constantLongInstruction(const char *name, Chunk *chunk, int offset)
+{
+    uint32_t index = chunk->code[offset + 1] |
+                     (chunk->code[offset + 2] << 8) |
+                     (chunk->code[offset + 3] << 16);
+    printf("%-16s %4u '", name, index);
+    printValue(chunk->constants.values[index]);
+    printf("'\n");
+    return offset + 4;
+}
+
 static int simpleInstruction(const char *name, int offset)
 {
     printf("%s\n", name);
@@ -67,6 +78,17 @@ int disassembleInstruction(Chunk *chunk, int offset)
         return simpleInstruction("OP_TRUE", offset);
     case OP_FALSE:
         return simpleInstruction("OP_FALSE", offset);
+    case OP_POP:
+        return simpleInstruction("OP_POP", offset);
+    case OP_GET_GLOBAL:
+        return constantInstruction("OP_GET_GLOBAL", chunk, offset);
+    case OP_GET_GLOBAL_LONG:
+        return constantLongInstruction("OP_GET_GLOBAL_LONG", chunk, offset);
+    case OP_DEFINE_GLOBAL:
+        return constantInstruction("OP_DEFINE_GLOBAL", chunk,
+                                   offset);
+    case OP_DEFINE_GLOBAL_LONG:
+        return constantLongInstruction("OP_DEFINE_GLOBAL_LONG", chunk, offset);
     case OP_EQUAL:
         return simpleInstruction("OP_EQUAL", offset);
     case OP_GREATER:
@@ -85,6 +107,8 @@ int disassembleInstruction(Chunk *chunk, int offset)
         return simpleInstruction("OP_NOT", offset);
     case OP_NEGATE:
         return simpleInstruction("OP_NEGATE", offset);
+    case OP_PRINT:
+        return simpleInstruction("OP_PRINT", offset);
     case OP_RETURN:
         return simpleInstruction("OP_RETURN", offset);
     default:

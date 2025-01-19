@@ -34,11 +34,13 @@ void initVM()
 {
     resetStack();
     vm.objects = NULL;
+    initTable(&vm.globals);
     initTable(&vm.strings);
 }
 
 void freeVM()
 {
+    freeTable(&vm.globals);
     freeTable(&vm.strings);
     freeObjects();
 }
@@ -125,6 +127,7 @@ static InterpretResult run()
         vm.chunk->constants.values[(byte1 | (byte2 << 8) | (byte3 << 16))]; \
     })
 
+#define READ_STRING() AS_STRING(READ_CONSTANT())
 #define BINARY_OP(valueType, op)                        \
     do                                                  \
     {                                                   \
@@ -176,6 +179,58 @@ static InterpretResult run()
         case OP_FALSE:
             push(BOOL_VAL(false));
             break;
+        case OP_POP:
+            pop();
+            break;
+        case OP_GET_GLOBAL:
+        {
+            ObjString *name = READ_STRING();
+            Value value;
+            if (!tableGet(&vm.globals, name, &value))
+            {
+                runtimeError("Undefined variable '%s'.", name->chars);
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            push(value);
+            break;
+        }
+        case OP_GET_GLOBAL_LONG:
+        {
+            // Read the 3-byte index.
+            uint32_t index = READ_BYTE();
+            index |= (READ_BYTE() << 8);
+            index |= (READ_BYTE() << 16);
+
+            ObjString *name = AS_STRING(vm.chunk->constants.values[index]);
+            Value value;
+
+            if (!tableGet(&vm.globals, name, &value))
+            {
+                runtimeError("Undefined variable '%s'.", name->chars);
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            push(value);
+            break;
+        }
+        case OP_DEFINE_GLOBAL:
+        {
+            ObjString *name = READ_STRING();
+            tableSet(&vm.globals, name, peek(0));
+            pop();
+            break;
+        }
+        case OP_DEFINE_GLOBAL_LONG:
+        {
+            // Read the 3-byte index as a uint16_t.
+            uint32_t index = READ_BYTE();
+            index |= (READ_BYTE() << 8);
+            index |= (READ_BYTE() << 16);
+
+            ObjString *name = AS_STRING(vm.chunk->constants.values[index]);
+            tableSet(&vm.globals, name, peek(0)); // Define the global variable.
+            pop();                                // Remove the value from the stack.
+            break;
+        }
         case OP_EQUAL:
         {
             Value b = pop();
@@ -243,10 +298,15 @@ static InterpretResult run()
             }
             push(NUMBER_VAL(-AS_NUMBER(pop())));
             break;
-        case OP_RETURN:
+        case OP_PRINT:
         {
             printValue(pop());
             printf("\n");
+            break;
+        }
+
+        case OP_RETURN:
+        {
             return INTERPRET_OK;
         }
         }
@@ -255,6 +315,7 @@ static InterpretResult run()
 #undef READ_BYTE
 #undef READ_CONSTANT
 #undef READ_LONG_CONSTANT
+#undef READ_STRING
 #undef BINARY_OP
 }
 
