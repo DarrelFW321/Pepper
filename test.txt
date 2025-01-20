@@ -1,3 +1,6 @@
-for (var i = 0; i<5;i=i+1){
-    print i;
+fun printa(n){
+    if (n <=1) return 1;
+    return (printa(n-1) + printa(n-2));
 }
+
+print(printa(4));

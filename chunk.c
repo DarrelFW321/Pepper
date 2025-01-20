@@ -39,7 +39,7 @@ uint32_t writeConstant(Chunk *chunk, Value value, int line)
         writeChunk(chunk, (uint8_t)((index >> 16) & 0xff), line);
     }
 
-    return (uint32_t)index; // Ensure the return type is `uint16_t`.
+    return (uint32_t)index;
 }
 
 void writeChunk(Chunk *chunk, uint8_t byte, int line)
