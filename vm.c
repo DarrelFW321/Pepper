@@ -117,7 +117,10 @@ static InterpretResult run()
 {
 #define READ_BYTE() (*vm.ip++) // Separate dereference and increment.
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
-
+#define READ_SHORT() \
+    (vm.ip += 2, (uint16_t)((vm.ip[-2] << 8) | vm.ip[-1]))
+#define READ_LONG() \
+    (uint32_t)(READ_BYTE() | (READ_BYTE() << 8) | (READ_BYTE() << 16))
 // For OP_CONSTANT_LONG, read 3 bytes separately
 #define READ_LONG_CONSTANT()                                                \
     ({                                                                      \
@@ -182,6 +185,30 @@ static InterpretResult run()
         case OP_POP:
             pop();
             break;
+        case OP_GET_LOCAL:
+        {
+            uint8_t slot = READ_BYTE();
+            push(vm.stack[slot]);
+            break;
+        }
+        case OP_GET_LOCAL_LONG:
+        {
+            uint32_t slot = READ_LONG(); // Read the 3-byte slot index
+            push(vm.stack[slot]);
+            break;
+        }
+        case OP_SET_LOCAL:
+        {
+            uint8_t slot = READ_BYTE();
+            vm.stack[slot] = peek(0);
+            break;
+        }
+        case OP_SET_LOCAL_LONG:
+        {
+            uint32_t slot = READ_LONG(); // Read the 3-byte slot index
+            vm.stack[slot] = peek(0);    // Set the value at the specified slot
+            break;
+        }
         case OP_GET_GLOBAL:
         {
             ObjString *name = READ_STRING();
@@ -217,6 +244,7 @@ static InterpretResult run()
             ObjString *name = READ_STRING();
             tableSet(&vm.globals, name, peek(0));
             pop();
+            pop();
             break;
         }
         case OP_DEFINE_GLOBAL_LONG:
@@ -229,6 +257,33 @@ static InterpretResult run()
             ObjString *name = AS_STRING(vm.chunk->constants.values[index]);
             tableSet(&vm.globals, name, peek(0)); // Define the global variable.
             pop();                                // Remove the value from the stack.
+            pop();
+            break;
+        }
+        case OP_SET_GLOBAL:
+        {
+            ObjString *name = READ_STRING();
+            if (tableSet(&vm.globals, name, peek(0)))
+            {
+                tableDelete(&vm.globals, name);
+                runtimeError("Undefined variable '%s'.", name->chars);
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            break;
+        }
+        case OP_SET_GLOBAL_LONG:
+        {
+            uint32_t index = READ_BYTE();
+            index |= (READ_BYTE() << 8);
+            index |= (READ_BYTE() << 16);
+
+            ObjString *name = AS_STRING(vm.chunk->constants.values[index]);
+            if (tableSet(&vm.globals, name, peek(0)))
+            {
+                tableDelete(&vm.globals, name);
+                runtimeError("Undefined variable '%s'.", name->chars);
+                return INTERPRET_RUNTIME_ERROR;
+            }
             break;
         }
         case OP_EQUAL:
@@ -304,7 +359,19 @@ static InterpretResult run()
             printf("\n");
             break;
         }
-
+        case OP_JUMP:
+        {
+            uint16_t offset = READ_SHORT();
+            vm.ip += offset;
+            break;
+        }
+        case OP_JUMP_IF_FALSE:
+        {
+            uint16_t offset = READ_SHORT();
+            if (isFalsey(peek(0)))
+                vm.ip += offset;
+            break;
+        }
         case OP_RETURN:
         {
             return INTERPRET_OK;
@@ -313,7 +380,9 @@ static InterpretResult run()
     }
 
 #undef READ_BYTE
+#undef READ_SHORT
 #undef READ_CONSTANT
+#undef READ_LONG
 #undef READ_LONG_CONSTANT
 #undef READ_STRING
 #undef BINARY_OP
