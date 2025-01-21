@@ -1,6 +1,24 @@
-fun printa(n){
-    if (n <=1) return 1;
-    return (printa(n-1) + printa(n-2));
+var globalOne;
+var globalTwo;
+
+fun main() {
+  {
+    var a = "one";
+    fun one() {
+      print a;
+    }
+    globalOne = one;
+  }
+
+  {
+    var a = "two";
+    fun two() {
+      print a;
+    }
+    globalTwo = two;
+  }
 }
 
-print(printa(4));
+main();
+globalOne();
+globalTwo();
