@@ -32,6 +32,8 @@ typedef enum
     OP_GET_UPVALUE_LONG,
     OP_SET_UPVALUE,
     OP_SET_UPVALUE_LONG,
+    OP_GET_PROPERTY,
+    OP_SET_PROPERTY,
     OP_EQUAL,
     OP_GREATER,
     OP_LESS,
@@ -50,6 +52,7 @@ typedef enum
     OP_CLOSURE_LONG,
     OP_CLOSE_UPVALUE,
     OP_RETURN,
+    OP_CLASS,
 } OpCode;
 
 typedef struct
