@@ -47,6 +47,13 @@ typedef struct
     Token name;
     int depth;
 } Local;
+
+typedef struct
+{
+    uint32_t index;
+    bool isLocal;
+} Upvalue;
+
 typedef enum
 {
     TYPE_FUNCTION,
@@ -61,6 +68,7 @@ typedef struct Compiler
 
     Local locals[LOCALS_MAX];
     int localCount;
+    Upvalue upvalues[LOCALS_MAX];
     int scopeDepth;
 } Compiler;
 
@@ -290,6 +298,51 @@ static int resolveLocal(Compiler *compiler, Token *name)
 
     return -1;
 }
+
+static int addUpvalue(Compiler *compiler, uint32_t index,
+                      bool isLocal)
+{
+    int upvalueCount = compiler->function->upvalueCount;
+    for (int i = 0; i < upvalueCount; i++)
+    {
+        Upvalue *upvalue = &compiler->upvalues[i];
+        if (upvalue->index == index && upvalue->isLocal == isLocal)
+        {
+            return i;
+        }
+    }
+
+    if (upvalueCount == LOCALS_MAX)
+    {
+        error("Too many closure variables in function.");
+        return 0;
+    }
+
+    compiler->upvalues[upvalueCount].isLocal = isLocal;
+    compiler->upvalues[upvalueCount].index = index;
+
+    return compiler->function->upvalueCount++;
+}
+
+static int resolveUpvalue(Compiler *compiler, Token *name)
+{
+    if (compiler->enclosing == NULL)
+        return -1;
+
+    int local = resolveLocal(compiler->enclosing, name);
+    if (local != -1)
+    {
+        return addUpvalue(compiler, (uint32_t)local, true);
+    }
+
+    int upvalue = resolveUpvalue(compiler->enclosing, name);
+    if (upvalue != -1)
+    {
+        return addUpvalue(compiler, (uint32_t)upvalue, false);
+    }
+
+    return -1;
+}
 static void addLocal(Token name)
 {
     if (current->localCount == LOCALS_MAX)
@@ -481,6 +534,7 @@ static void string(bool canAssign)
 static void namedVariable(Token name, bool canAssign)
 {
     int arg = resolveLocal(current, &name);
+    int argument;
 
     if (arg != -1)
     {
@@ -514,6 +568,39 @@ static void namedVariable(Token name, bool canAssign)
             }
         }
     }
+    else if ((argument = resolveUpvalue(current, &name)) != -1)
+    {
+        if (arg < 256)
+        {
+            if (canAssign && (match(TOKEN_EQUAL)))
+            {
+                expression();
+                emitBytes(OP_SET_UPVALUE, (uint8_t)argument);
+            }
+            else
+            {
+                emitBytes(OP_GET_UPVALUE, (uint8_t)argument);
+            }
+        }
+        else
+        {
+            if (canAssign && match(TOKEN_EQUAL))
+            {
+                expression();
+                emitByte(OP_SET_UPVALUE_LONG);
+                emitByte((uint8_t)(argument & 0xff));         // Lower byte
+                emitByte((uint8_t)((argument >> 8) & 0xff));  // Middle byte
+                emitByte((uint8_t)((argument >> 16) & 0xff)); // Upper byte
+            }
+            else
+            {
+                emitByte(OP_GET_UPVALUE_LONG);
+                emitByte((uint8_t)(argument & 0xff));         // Lower byte
+                emitByte((uint8_t)((argument >> 8) & 0xff));  // Middle byte
+                emitByte((uint8_t)((argument >> 16) & 0xff)); // Upper byte
+            }
+        }
+    }
     else
     {
         // Global variable handling remains the same.
@@ -535,7 +622,7 @@ static void namedVariable(Token name, bool canAssign)
             if (canAssign && match(TOKEN_EQUAL))
             {
                 expression();
-                emitBytes(OP_SET_GLOBAL_LONG, arg);
+                emitByte(OP_SET_GLOBAL_LONG);
                 emitByte((uint8_t)(arg & 0xff));         // Lower byte
                 emitByte((uint8_t)((arg >> 8) & 0xff));  // Middle byte
                 emitByte((uint8_t)((arg >> 16) & 0xff)); // Upper byte
@@ -683,7 +770,33 @@ static void function(FunctionType type)
     block();
 
     ObjFunction *function = endCompiler();
-    emitConstant(OBJ_VAL(function));
+    uint32_t index = makeConstant(OBJ_VAL(function));
+    if (index < 256)
+    {
+        emitBytes(OP_CLOSURE, (uint8_t)index);
+    }
+    else
+    {
+        emitByte(OP_CLOSURE_LONG);
+        emitByte((uint8_t)(index & 0xff));
+        emitByte((uint8_t)((index >> 8) & 0xff));
+        emitByte((uint8_t)((index >> 16) & 0xff));
+    }
+    for (int i = 0; i < function->upvalueCount; i++)
+    {
+        emitByte(compiler.upvalues[i].isLocal ? 1 : 0);
+        index = compiler.upvalues[i].index;
+        if (index < 256)
+        {
+            emitByte((uint8_t)index);
+        }
+        else
+        {
+            emitByte((uint8_t)(index & 0xff));
+            emitByte((uint8_t)((index >> 8) & 0xff));
+            emitByte((uint8_t)((index >> 16) & 0xff));
+        }
+    }
 }
 static void funDeclaration()
 {
