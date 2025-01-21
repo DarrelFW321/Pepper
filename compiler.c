@@ -572,6 +572,7 @@ static void number(bool canAssign)
     double value = strtod(parser.previous.start, NULL);
     emitConstant(NUMBER_VAL(value));
 }
+
 static void or_(bool canAssign)
 {
     int elseJump = emitJump(OP_JUMP_IF_FALSE);
@@ -699,6 +700,41 @@ static void variable(bool canAssign)
     namedVariable(parser.previous, canAssign);
 }
 
+static void newSmartPointer(bool canAssign)
+{
+    // Ensure the type name is followed by '('.
+    consume(TOKEN_LEFT_PAREN, "Expected '(' after new.");
+
+    if (!check(TOKEN_IDENTIFIER))
+    {
+        error("Expected identifier or object to point to after 'new'.");
+    }
+    variable(canAssign);
+
+    // Ensure the closing ')' is present.
+    consume(TOKEN_RIGHT_PAREN, "Expected ')' after arguments.");
+
+    emitByte(OP_CALL);
+    emitByte(1);
+}
+
+static void freeObject(bool canAssign)
+{
+    consume(TOKEN_LEFT_PAREN, "Expected '(' after free.");
+
+    if (!check(TOKEN_IDENTIFIER))
+    {
+        error("Expected identifier or object to free after 'free'.");
+    }
+    variable(false);
+
+    // Ensure the closing ')' is present.
+    consume(TOKEN_RIGHT_PAREN, "Expected ')' after arguments.");
+
+    emitByte(OP_CALL);
+    emitByte(1);
+}
+
 static Token syntheticToken(const char *text)
 {
     Token token;
@@ -790,6 +826,8 @@ ParseRule rules[] = {
     [TOKEN_IDENTIFIER] = {variable, NULL, PREC_NONE},
     [TOKEN_STRING] = {string, NULL, PREC_NONE},
     [TOKEN_NUMBER] = {number, NULL, PREC_NONE},
+    [TOKEN_NEW] = {newSmartPointer, NULL, PREC_CALL},
+    [TOKEN_FREE] = {NULL, freeObject, PREC_NONE},
     [TOKEN_AND] = {NULL, and_, PREC_AND},
     [TOKEN_CLASS] = {NULL, NULL, PREC_NONE},
     [TOKEN_ELSE] = {NULL, NULL, PREC_NONE},

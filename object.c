@@ -24,6 +24,15 @@ static Obj *allocateObject(size_t size, ObjType type)
     return object;
 }
 
+ObjSmartPointer *newSmartPointer(Value *target, int offset)
+{
+    ObjSmartPointer *pointer = ALLOCATE_OBJ(ObjSmartPointer, OBJ_SMART_POINTER);
+    pointer->target = target;
+    pointer->offset = offset;
+    pointer->isFreed = false;
+    return pointer;
+}
+
 ObjBoundMethod *newBoundMethod(Value receiver,
                                ObjClosure *method)
 {

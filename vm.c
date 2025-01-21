@@ -18,6 +18,39 @@ static Value clockNative(int argCount, Value *args)
     return NUMBER_VAL((double)clock() / CLOCKS_PER_SEC);
 }
 
+static Value nativeFree(int argCount, Value *args)
+{
+    if (argCount != 1)
+    {
+        runtimeError("free() takes exactly one argument.");
+        return NIL_VAL;
+    }
+
+    if (!IS_SMART_POINTER(args[0]))
+    {
+        runtimeError("free() must be called on a SmartPointer.");
+        return NIL_VAL;
+    }
+
+    ObjSmartPointer *pointer = AS_SMART_POINTER(args[0]);
+    freeSmartPointer(pointer);
+
+    return NIL_VAL; // Indicates success
+}
+
+static Value nativeSmartPointerNew(int argCount, Value *args)
+{
+    if (argCount != 1)
+    {
+        runtimeError("new() takes exactly one argument.");
+        return NIL_VAL;
+    }
+
+    // Allocate the smart pointer with the provided data
+    ObjSmartPointer *pointer = newSmartPointer(args[0]); // Custom allocation logic
+    return SMART_POINTER_VAL(pointer);
+}
+
 static void resetStack()
 {
     vm.stackTop = vm.stack;
@@ -79,6 +112,8 @@ void initVM()
     vm.initString = copyString("init", 4);
 
     defineNative("clock", clockNative);
+    defineNative("new", nativeSmartPointerNew);
+    defineNative("free", nativeFree);
 }
 
 void freeVM()
@@ -327,6 +362,41 @@ static void concatenate()
     pop();
     pop();
     push(OBJ_VAL(result));
+}
+
+static void smartPointerArithmetic(ObjSmartPointer *pointer, int delta)
+{
+    if (pointer->isFreed)
+    {
+        runtimeError("Attempt to access a freed smart pointer.");
+        return;
+    }
+    pointer->offset += delta;
+}
+
+void freeSmartPointer(ObjSmartPointer *pointer)
+{
+    if (pointer == NULL)
+    {
+        runtimeError("Attempted to free a null pointer.");
+        return;
+    }
+
+    if (pointer->isFreed)
+    {
+        runtimeError("Smart pointer already freed.");
+        return;
+    }
+
+    // Free the target memory if necessary
+    if (pointer->target != NULL)
+    {
+        free(pointer->target);  // Only if target is dynamically allocated
+        pointer->target = NULL; // Invalidate the pointer
+    }
+
+    pointer->isFreed = true;
+    // printf("Smart pointer at %p freed.\n", (void*)pointer);
 }
 
 static InterpretResult run()
@@ -619,10 +689,19 @@ static InterpretResult run()
                 ObjString *str = AS_STRING(pop());
                 push(OBJ_VAL(stringifyAndConcatenateWithNumber(num, str, false)));
             }
+            else if (IS_SMART_POINTER(peek(0)))
+            {
+                ObjSmartPointer *pointer = AS_SMART_POINTER(peek(0));
+                int delta = AS_NUMBER(peek(1));
+                smartPointerArithmetic(pointer, delta);
+                pop();
+                pop();
+                push(OBJ_VAL(pointer));
+            }
             else
             {
                 runtimeError(
-                    "Operands must be two numbers, two strings, or a combination of strings and numbers.");
+                    "Operands must be two numbers, two strings, or a combination of strings and numbers, or pointer with numbers.");
                 return INTERPRET_RUNTIME_ERROR;
             }
             break;

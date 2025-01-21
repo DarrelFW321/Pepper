@@ -1,15 +1,26 @@
-class CoffeeMaker {
-  init(coffee) {
-    this.coffee = coffee;
+class Breakfast {
+  init(meat, bread) {
+    this.meat = meat;
+    this.bread = bread;
   }
 
-  brew() {
-    print "Enjoy your cup of " + this.coffee;
+    serve(who) {
+    print "Enjoy your " + this.meat + " and " +
+        this.bread + ", " + who + ".";
+  }
 
-    // No reusing the grounds!
-    this.coffee = nil;
+  // ...
+}
+
+class Brunch < Breakfast {
+  drink() {
+    print "How about a Bloody Mary?";
   }
 }
 
-var maker = CoffeeMaker("coffee and chicory");
-maker.brew();
+var baconAndToast = Breakfast("bacon", "toast");
+baconAndToast.serve("Dear Reader");
+var benedict = Brunch("ham", "English muffin");
+benedict.serve("Noble Reader");
+
+

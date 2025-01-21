@@ -38,6 +38,7 @@ typedef struct
 #define NIL_VAL ((Value){VAL_NIL, {.number = 0}})
 #define NUMBER_VAL(value) ((Value){VAL_NUMBER, {.number = value}})
 #define OBJ_VAL(object) ((Value){VAL_OBJ, {.obj = (Obj *)object}})
+#define SMART_POINTER_VAL(obj) OBJ_VAL(obj)
 
 typedef struct
 {

@@ -29,6 +29,8 @@ typedef enum
     TOKEN_STRING,
     TOKEN_NUMBER,
     // Keywords.
+    TOKEN_NEW,
+    TOKEN_FREE,
     TOKEN_AND,
     TOKEN_CLASS,
     TOKEN_ELSE,
