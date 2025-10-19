@@ -8,7 +8,6 @@
 
 #define OBJ_TYPE(value) (AS_OBJ(value)->type)
 
-#define IS_SMART_POINTER(value) isObjType(value, OBJ_SMART_POINTER)
 #define IS_BOUND_METHOD(value) isObjType(value, OBJ_BOUND_METHOD)
 #define IS_CLASS(value) isObjType(value, OBJ_CLASS)
 #define IS_CLOSURE(value) isObjType(value, OBJ_CLOSURE)
@@ -17,7 +16,6 @@
 #define IS_NATIVE(value) isObjType(value, OBJ_NATIVE)
 #define IS_STRING(value) isObjType(value, OBJ_STRING)
 
-#define AS_SMART_POINTER(value) ((ObjSmartPointer *)AS_OBJ(value))
 #define AS_BOUND_METHOD(value) ((ObjBoundMethod *)AS_OBJ(value))
 #define AS_CLASS(value) ((ObjClass *)AS_OBJ(value))
 #define AS_CLOSURE(value) ((ObjClosure *)AS_OBJ(value))
@@ -30,7 +28,6 @@
 
 typedef enum
 {
-    OBJ_SMART_POINTER,
     OBJ_BOUND_METHOD,
     OBJ_CLASS,
     OBJ_CLOSURE,
@@ -47,14 +44,6 @@ struct Obj
     bool isMarked;
     struct Obj *next;
 };
-
-typedef struct
-{
-    Obj obj;       // Base object
-    Value *target; // Pointer to the target memory
-    int offset;    // Offset for pointer arithmetic
-    bool isFreed;  // To prevent use-after-free
-} ObjSmartPointer;
 
 typedef struct
 {

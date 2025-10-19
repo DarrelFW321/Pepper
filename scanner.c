@@ -152,24 +152,13 @@ static TokenType identifierType()
                 return checkKeyword(2, 1, "r", TOKEN_FOR);
             case 'u':
                 return checkKeyword(2, 1, "n", TOKEN_FUN);
-            case 'r':
-                return checkKeyword(2, 2, "ee", TOKEN_FREE);
             }
         }
         break;
     case 'i':
         return checkKeyword(1, 1, "f", TOKEN_IF);
     case 'n':
-        if (scanner.current - scanner.start > 1)
-        {
-            switch (scanner.start[1])
-            {
-            case 'i':
-                return checkKeyword(2, 1, "l", TOKEN_NIL);
-            case 'e':
-                return checkKeyword(2, 1, "w", TOKEN_NEW);
-            }
-        }
+        return checkKeyword(1, 2, "il", TOKEN_NIL);
     case 'o':
         return checkKeyword(1, 1, "r", TOKEN_OR);
     case 'p':

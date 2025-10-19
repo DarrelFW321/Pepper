@@ -140,15 +140,6 @@ static void freeObject(Obj *object)
 #endif
     switch (object->type)
     {
-    case OBJ_SMART_POINTER:
-    {
-        ObjSmartPointer *pointer = (ObjSmartPointer *)object;
-        if (!pointer->isFreed)
-        {
-            pointer->target = NULL; // Ensure the target is invalidated
-        }
-        break;
-    }
     case OBJ_BOUND_METHOD:
         FREE(ObjBoundMethod, object);
         break;
