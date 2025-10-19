@@ -47,11 +47,12 @@ Example:
 ./pepper test_programs/morelocals.txt
 ```
 
+### Author
 Darrel Wihandi
-Software Engineering @ University of Waterloo
-Interests: Compilers, Virtual Machines, AI/ML Infrastructure
+Software Engineering @ University of Waterloo.
+Interests: Compilers, Virtual Machines, AI/ML Infrastructure.
 
-License
+### License
 
 This project is distributed under the MIT License.
 See LICENSE for more information.
